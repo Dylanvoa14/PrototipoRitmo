@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Prototipo interactivo de Ritmo: anuncios a su tiempo. PC2, Empresa y Consumidor, UTEC 2026-2.">
+<title>Prototipo Ritmo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: panel de controles | columna de análisis (indicadores → línea de tiempo → detalle del corte) | celular que reproduce la sesión */
+:root{
+  --bg:#f2f4f8; --surface:#ffffff; --surface-2:#eaeef4; --ink:#131722; --ink-2:#465063; --ink-3:#768096; --line:#dce1ea;
+  --accent:#2a58de; --accent-soft:#e2e9fc; --on-mark:#ffffff;
+  --show:#0e9a73; --short:#c4860a; --defer:#6a4cd6; --cap:#8a93a3; --cut:#d2463e; --fixed:#99a1b0;
+  --show-soft:#daf2ea; --short-soft:#f8ebcf; --defer-soft:#ebe5fb; --cut-soft:#fbe2e0; --cap-soft:#eceef2;
+  --phone:#0c0f14; --phone-2:#161a22; --phone-3:#232936; --phone-ink:#f1f3f7; --phone-ink-2:#a3abba;
+  --vid-a:#17324f; --vid-b:#0a1222; --yt:#ff3b30; --ad-yellow:#f6c343; --scrim:rgba(6,8,12,.93);
+  --f-display:'Bricolage Grotesque','Space Grotesk',system-ui,sans-serif;
+  --f-body:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1117; --surface:#161a22; --surface-2:#1e2330; --ink:#edf0f6; --ink-2:#b2b9c8; --ink-3:#7f8899; --line:#2a303d;
+  --accent:#7d9dff; --accent-soft:#1d2642; --on-mark:#0d1016;
+  --show:#3fcf9f; --short:#f0b444; --defer:#a58eff; --cap:#8e97a8; --cut:#ff7b70; --fixed:#6f7788;
+  --show-soft:#12312a; --short-soft:#392c10; --defer-soft:#251e44; --cut-soft:#3a1d1b; --cap-soft:#232834;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1117; --surface:#161a22; --surface-2:#1e2330; --ink:#edf0f6; --ink-2:#b2b9c8; --ink-3:#7f8899; --line:#2a303d;
+  --accent:#7d9dff; --accent-soft:#1d2642; --on-mark:#0d1016;
+  --show:#3fcf9f; --short:#f0b444; --defer:#a58eff; --cap:#8e97a8; --cut:#ff7b70; --fixed:#6f7788;
+  --show-soft:#12312a; --short-soft:#392c10; --defer-soft:#251e44; --cut-soft:#3a1d1b; --cap-soft:#232834;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{max-width:1440px;margin:0 auto;padding-block:24px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* Cabecera */
+.top{display:flex;flex-wrap:wrap;gap:12px 40px;align-items:flex-end;justify-content:space-between;margin-bottom:22px}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{width:42px;height:42px;border-radius:11px;background:var(--ink);color:var(--bg);display:grid;place-items:center;flex:none}
+h1{font-family:var(--f-display);font-size:32px;font-weight:700;line-height:1;margin:0;letter-spacing:-.015em}
+.brand p{margin:5px 0 0;color:var(--ink-3);font-size:12.5px}
+.lede{margin:0;max-width:64ch;color:var(--ink-2);text-wrap:pretty}
+
+/* Grilla principal */
+.layout{display:grid;gap:20px;grid-template-columns:minmax(0,1fr);grid-template-areas:"phone" "controls" "main"}
+.controls{grid-area:controls}.main{grid-area:main;min-width:0}.phone-col{grid-area:phone}
+@media (min-width:820px){.layout{grid-template-columns:300px minmax(0,1fr);grid-template-areas:"phone main" "controls main";align-items:start}}
+@media (min-width:1300px){.layout{grid-template-columns:280px minmax(0,1fr) 316px;grid-template-areas:"controls main phone"}
+  .phone-col{position:sticky;top:16px}}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+.main{display:flex;flex-direction:column;gap:16px}
+h2{font-family:var(--f-display);font-size:17px;font-weight:700;margin:0;letter-spacing:-.005em;text-wrap:balance}
+h3{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600;margin:0}
+.head{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+.sub{color:var(--ink-3);font-size:12.5px;margin:0}
+
+/* Controles */
+.controls{display:flex;flex-direction:column;gap:14px}
+.group{display:flex;flex-direction:column;gap:14px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label,.field .flabel{display:flex;justify-content:space-between;gap:8px;font-weight:500}
+.field output{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:13px}
+.hint{font-size:12px;color:var(--ink-3);line-height:1.4}
+input[type=range]{width:100%;accent-color:var(--accent);margin:2px 0}
+.segmented{display:grid;grid-template-columns:1fr 1fr;background:var(--surface-2);border-radius:10px;padding:3px;gap:3px}
+.segmented button{border:0;background:transparent;padding:7px 8px;border-radius:8px;font-weight:500;color:var(--ink-2);cursor:pointer;font-size:13px}
+.segmented button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 10px;font-size:12.5px;cursor:pointer;color:var(--ink-2)}
+.chip[aria-pressed="true"]{background:var(--surface-2);color:var(--ink-3);text-decoration:line-through;border-style:dashed}
+.presets{display:flex;flex-direction:column;gap:6px}
+.preset{display:flex;flex-direction:column;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 10px;cursor:pointer}
+.preset b{font-weight:600;font-size:13px}.preset span{font-size:12px;color:var(--ink-3)}
+.preset:hover{border-color:var(--accent)}
+.linkbtn{border:0;background:none;color:var(--accent);cursor:pointer;padding:0;font-size:12.5px;font-weight:500;align-self:flex-start}
+.persona{display:flex;gap:10px;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-weight:700;font-family:var(--f-display);flex:none}
+.persona b{display:block;font-size:13.5px}.persona span{font-size:12px;color:var(--ink-3)}
+
+/* Indicadores */
+.kpis{display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (min-width:620px){.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.kpi-label{font-size:12px;color:var(--ink-2);font-weight:500}
+.kpi-row{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.kpi-big{font-family:var(--f-display);font-size:28px;font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi-from{font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.delta{font-size:11.5px;font-weight:600;padding:1px 7px;border-radius:999px;font-variant-numeric:tabular-nums;align-self:flex-start}
+.delta.good{background:var(--show-soft);color:var(--show)}.delta.warn{background:var(--short-soft);color:var(--short)}
+.delta.bad{background:var(--cut-soft);color:var(--cut)}.delta.flat{background:var(--cap-soft);color:var(--ink-3)}
+.kpi.money{grid-column:span 2}
+@media (min-width:620px){.kpi.money{grid-column:auto}}
+.crit{font-size:11.5px;color:var(--ink-3);line-height:1.35}
+.crit b{color:var(--ink-2)}
+
+/* Línea de tiempo */
+.tl-scroll{overflow-x:auto;padding-bottom:4px}
+.tl{display:grid;grid-template-columns:118px minmax(560px,1fr);row-gap:8px;position:relative}
+.lab{font-size:12px;color:var(--ink-2);font-weight:500;align-self:center;padding-right:12px;line-height:1.25}
+.lab small{display:block;color:var(--ink-3);font-weight:400;font-size:11px}
+.tr{position:relative;height:40px}
+.tr.axis{height:16px}
+.tr.topics{height:28px}
+.tr.sim{height:58px;cursor:pointer}
+.tr.lane{cursor:pointer}
+.tr.lane::before{content:"";position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;background:var(--line);border-radius:2px}
+.tick{position:absolute;top:0;font-size:10.5px;color:var(--ink-3);font-family:var(--f-mono);transform:translateX(-50%);font-variant-numeric:tabular-nums}
+.tick.first{transform:none}.tick.last{transform:translateX(-100%)}
+.topic{position:absolute;top:0;bottom:0;border-radius:6px;background:var(--surface-2);padding:5px 7px;font-size:11px;color:var(--ink-2);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;border:1px solid var(--surface);}
+.topic:nth-child(even){background:var(--cap-soft)}
+.sim svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.sim .line{fill:none;stroke:var(--ink-2);stroke-width:1.5;vector-effect:non-scaling-stroke}
+.sim .area{fill:var(--accent-soft);stroke:none}
+.sim .thr{stroke:var(--cut);stroke-width:1;stroke-dasharray:4 4;vector-effect:non-scaling-stroke}
+.dip{position:absolute;width:9px;height:9px;border-radius:50%;background:var(--cut);transform:translate(-50%,-50%);border:2px solid var(--surface)}
+.thr-lab{position:absolute;right:0;font-size:10px;color:var(--cut);font-family:var(--f-mono);transform:translateY(-120%)}
+.mk{position:absolute;top:50%;transform:translate(-50%,-50%);border:0;cursor:pointer;display:grid;place-items:center;font-family:var(--f-mono);font-size:10.5px;font-weight:500;color:var(--on-mark);padding:0;z-index:1}
+.mk.fixed{width:26px;height:20px;border-radius:5px;background:var(--fixed)}
+.mk.fixed.mid{background:var(--cut)}
+.mk.rit{width:26px;height:26px;border-radius:50%}
+.mk.show{background:var(--show)}.mk.short{background:var(--short)}.mk.defer{background:var(--defer)}
+.mk.cap{background:var(--surface);border:2px dashed var(--cap);color:var(--cap)}
+.mk[aria-pressed="true"]{box-shadow:0 0 0 3px var(--surface),0 0 0 5px var(--ink)}
+.mk:hover{filter:brightness(1.08)}
+.tl-over{grid-column:2;grid-row:1/-1;position:relative;pointer-events:none}
+.playhead{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--accent);border-radius:2px}
+.playhead::before{content:"";position:absolute;top:-3px;left:-4px;width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:14px;font-size:12px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:12px;height:12px;border-radius:50%;display:inline-block}
+.sw.sq{border-radius:3px}
+.sw.cap{background:transparent;border:2px dashed var(--cap)}
+
+/* Detalle del corte */
+.detail-top{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px}
+.pill.lane{background:var(--surface-2);color:var(--ink-2)}
+.pill.show{background:var(--show-soft);color:var(--show)}.pill.short{background:var(--short-soft);color:var(--short)}
+.pill.defer{background:var(--defer-soft);color:var(--defer)}.pill.cap{background:var(--cap-soft);color:var(--ink-3)}
+.pill.fixed{background:var(--cut-soft);color:var(--cut)}.pill.fixed.pre{background:var(--cap-soft);color:var(--ink-2)}
+.dtime{font-family:var(--f-display);font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+.detail-grid{display:grid;gap:22px;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
+.block{display:flex;flex-direction:column;gap:8px;min-width:0}
+.quote{border-left:3px solid var(--line);padding:2px 0 2px 12px;color:var(--ink-2);font-size:13.5px}
+.quote .cut{color:var(--cut);font-weight:600}
+.adcard{display:flex;gap:12px;align-items:center;background:var(--surface-2);border-radius:10px;padding:10px 12px}
+.adlogo{width:38px;height:38px;border-radius:9px;display:grid;place-items:center;font-family:var(--f-display);font-weight:700;color:#fff;flex:none}
+.adcard b{display:block;font-size:13.5px}.adcard span{font-size:12px;color:var(--ink-3)}
+.affin{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink-2)}
+.affin .bar{flex:1;height:6px;border-radius:3px;background:var(--surface-2);overflow:hidden}
+.affin .bar i{display:block;height:100%;background:var(--accent);border-radius:3px}
+.note{font-size:12.5px;color:var(--ink-2);background:var(--accent-soft);border-radius:8px;padding:8px 10px}
+.note.warn{background:var(--cut-soft)}
+.gauge{position:relative;height:10px;border-radius:5px;background:var(--surface-2);margin:22px 0 4px}
+.gauge i{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+.gauge .th{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--ink);margin-left:-1px}
+.gauge .th span{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);font-size:10.5px;font-family:var(--f-mono);white-space:nowrap;color:var(--ink-2)}
+.pbig{display:flex;align-items:baseline;gap:8px}
+.pbig strong{font-family:var(--f-display);font-size:30px;line-height:1;font-variant-numeric:tabular-nums}
+.pbig span{font-size:12px;color:var(--ink-3)}
+.contrib{display:grid;grid-template-columns:minmax(0,1fr) 110px 44px;gap:5px 10px;align-items:center;font-size:12px}
+.contrib .k{color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.contrib .v{font-family:var(--f-mono);text-align:right;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.cb{position:relative;height:8px}
+.cb::before{content:"";position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line)}
+.cb i{position:absolute;top:0;bottom:0;border-radius:2px}
+.cb i.up{left:50%;background:var(--cut)}.cb i.down{right:50%;background:var(--show)}
+.formula{font-family:var(--f-mono);font-size:11.5px;color:var(--ink-3);overflow-x:auto;white-space:nowrap}
+.why{font-size:13.5px;color:var(--ink);text-wrap:pretty;margin:0}
+.money-line{font-size:12.5px;color:var(--ink-2);border-top:1px solid var(--line);padding-top:8px;font-variant-numeric:tabular-nums}
+
+/* Supuestos */
+details.card summary{cursor:pointer;font-family:var(--f-display);font-weight:700;font-size:15px}
+details.card[open] summary{margin-bottom:12px}
+.assume{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));font-size:13px;color:var(--ink-2)}
+.assume ul{margin:6px 0 0;padding-left:18px}.assume li{margin:3px 0}
+.assume code{font-family:var(--f-mono);font-size:12px;background:var(--surface-2);padding:1px 5px;border-radius:4px;color:var(--ink)}
+
+/* Celular */
+.phone-col{display:flex;flex-direction:column;gap:12px;align-items:center}
+.phone-col .segmented{width:100%;max-width:300px}
+.phone{width:100%;max-width:300px;background:var(--phone);border-radius:38px;padding:9px;box-shadow:0 24px 48px -24px rgba(10,20,40,.55)}
+.screen{background:var(--phone-2);border-radius:30px;overflow:hidden;color:var(--phone-ink);display:flex;flex-direction:column;padding-bottom:14px}
+.status{display:flex;justify-content:space-between;align-items:center;padding:10px 20px 8px;font-size:11px;font-weight:600}
+.status .notch{width:70px;height:18px;background:var(--phone);border-radius:10px}
+.video{position:relative;aspect-ratio:16/9;background:linear-gradient(140deg,var(--vid-a),var(--vid-b));overflow:hidden}
+.art{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.wave{display:flex;gap:3px;align-items:center;height:34px}
+.wave i{width:3px;border-radius:2px;background:var(--phone-ink);opacity:.75;height:30%}
+.playing .wave i{animation:wv 900ms ease-in-out infinite alternate}
+@keyframes wv{from{transform:scaleY(.4)}to{transform:scaleY(1.6)}}
+@media (prefers-reduced-motion:reduce){.playing .wave i{animation:none}}
+.show-tag{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--phone-ink-2);font-weight:600}
+.caption{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);width:max-content;max-width:92%;background:rgba(0,0,0,.66);border-radius:4px;padding:3px 7px;font-size:10.5px;line-height:1.35;text-align:center}
+.caption .cut{color:#ff9a92;font-weight:600}
+.adlayer{position:absolute;inset:0;background:var(--scrim);display:flex;flex-direction:column;justify-content:space-between;padding:8px 9px}
+.ad-top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.adtag{background:var(--ad-yellow);color:#151515;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:3px}
+.whybtn{border:0;background:rgba(255,255,255,.12);color:var(--phone-ink);font-size:9.5px;padding:2px 7px;border-radius:999px;cursor:pointer}
+.ad-mid{display:flex;gap:9px;align-items:center}
+.ad-mid .adlogo{width:34px;height:34px;font-size:15px}
+.ad-mid b{font-size:12.5px;display:block}.ad-mid span{font-size:10.5px;color:var(--phone-ink-2)}
+.ad-bot{display:flex;justify-content:space-between;align-items:flex-end;gap:6px}
+.ad-cta{background:var(--accent);color:#fff;font-size:10px;font-weight:600;padding:3px 9px;border-radius:999px;border:0}
+.skip{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);font-size:10px;padding:3px 8px;border-radius:3px}
+.auto{font-size:9.5px;color:var(--phone-ink-2);text-align:right;max-width:60%}
+.whytext{font-size:10px;color:var(--phone-ink);background:rgba(255,255,255,.08);border-radius:6px;padding:4px 6px;line-height:1.35}
+.progress{position:relative;height:3px;background:var(--phone-3)}
+.progress .fill{position:absolute;left:0;top:0;bottom:0;background:var(--yt)}
+.progress .dot{position:absolute;top:0;width:3px;height:3px;background:var(--ad-yellow);margin-left:-1px}
+.meta{padding:10px 14px 0}
+.meta .vt{font-size:12.5px;font-weight:600;line-height:1.3}
+.meta .ch{display:flex;align-items:center;gap:7px;margin-top:7px;font-size:11px;color:var(--phone-ink-2)}
+.meta .ch i{width:22px;height:22px;border-radius:50%;background:linear-gradient(140deg,#2fae86,#1d6f9e);display:block}
+.rpill{margin:12px 14px 0;border-radius:11px;padding:9px 11px;background:var(--phone-3);font-size:11px;line-height:1.4;color:var(--phone-ink-2)}
+.rpill b{color:var(--phone-ink)}
+.rpill .meter{display:flex;gap:3px;margin-top:6px}
+.rpill .meter i{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.14)}
+.rpill .meter i.on{background:var(--ad-yellow)}
+.upnext{display:flex;flex-direction:column;gap:9px;padding:12px 14px 0}
+.un{display:flex;gap:9px;align-items:center}
+.un i{width:74px;aspect-ratio:16/9;border-radius:6px;flex:none;display:block}
+.un div{display:flex;flex-direction:column;gap:4px;flex:1}
+.un s{display:block;height:6px;border-radius:3px;background:var(--phone-3);text-decoration:none}
+.player{display:flex;gap:8px;align-items:center;width:100%;max-width:300px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:7px 12px;cursor:pointer;font-weight:500;font-size:13px}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.clock{margin-left:auto;font-family:var(--f-mono);font-size:12px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.phone-note{font-size:12px;color:var(--ink-3);max-width:300px;text-align:center;margin:0}
+</style>
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l4 18H5z"/><path d="M12 15 17 6"/><path d="M7 15h10"/></svg>
+      </div>
+      <div>
+        <h1>Ritmo</h1>
+        <p>Anuncios a su tiempo · Prototipo PC2 · Empresa y Consumidor · UTEC 2026-2</p>
+      </div>
+    </div>
+    <p class="lede">El mismo video de 18 minutos, con la misma usuaria, en dos versiones: la publicidad como funciona hoy y la publicidad decidida por Ritmo según la probabilidad de abandono, los cambios de tema del video y la relevancia del anuncio.</p>
+  </header>
+
+  <div class="layout">
+    <!-- Controles -->
+    <aside class="controls">
+      <div class="card group">
+        <div class="persona">
+          <div class="avatar" aria-hidden="true">L</div>
+          <div><b>Lucía, usuaria diaria</b><span>Buyer persona de la PC1</span></div>
+        </div>
+        <div>
+          <h3 style="margin-bottom:8px">Escenarios para la demo</h3>
+          <div class="presets" id="presets">
+            <button class="preset" data-p="base"><b>Lucía mirando el celular</b><span>Caso base de la encuesta</span></button>
+            <button class="preset" data-p="busy"><b>Lucía en la ducha</b><span>Manos ocupadas, no puede tocar la pantalla</span></button>
+            <button class="preset" data-p="tol"><b>Usuario tolerante</b><span>Casi no salta anuncios</span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card group">
+        <h3>Comportamiento de Lucía</h3>
+        <div class="field">
+          <label for="h">Salta anuncios <output id="hOut"></output></label>
+          <input type="range" id="h" min="0" max="1" step="0.01">
+          <div class="hint">En la encuesta, 78,1 % salta el anuncio apenas puede.</div>
+        </div>
+        <div class="field">
+          <label for="prev">Anuncios vistos en la última hora <output id="prevOut"></output></label>
+          <input type="range" id="prev" min="0" max="8" step="1">
+        </div>
+        <div class="field">
+          <span class="flabel">Contexto de uso</span>
+          <div class="segmented" id="ctxSeg">
+            <button data-v="0">Mirando la pantalla</button>
+            <button data-v="1">Manos ocupadas</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card group">
+        <h3>Preferencias que fija Lucía</h3>
+        <div class="field">
+          <label for="cap">Tope de anuncios por hora <output id="capOut"></output></label>
+          <input type="range" id="cap" min="2" max="10" step="1">
+        </div>
+        <div class="field">
+          <span class="flabel">Categorías que no quiere ver</span>
+          <div class="chips" id="cats"></div>
+          <div class="hint">Ocultar una categoría cambia qué anuncio aparece, no cuántos.</div>
+        </div>
+      </div>
+
+      <div class="card group">
+        <h3>Motor de Ritmo</h3>
+        <div class="field">
+          <label for="th">Umbral de abandono <output id="thOut"></output></label>
+          <input type="range" id="th" min="0.3" max="0.9" step="0.01">
+          <div class="hint">Si la probabilidad de abandono supera este valor, Ritmo acorta o difiere el anuncio.</div>
+        </div>
+        <button class="linkbtn" id="reset">Restablecer valores</button>
+      </div>
+    </aside>
+
+    <!-- Análisis -->
+    <main class="main">
+      <section class="kpis" id="kpis" aria-label="Indicadores de la sesión"></section>
+
+      <section class="card">
+        <div class="head">
+          <h2>Dónde cae cada anuncio</h2>
+          <p class="sub">Haz clic en un marcador para ver la decisión y verla en el celular.</p>
+        </div>
+        <div class="tl-scroll">
+          <div class="tl" id="tl">
+            <div class="lab"></div><div class="tr axis" id="axis"></div>
+            <div class="lab">Temas del video</div><div class="tr topics" id="topics"></div>
+            <div class="lab">Hoy<small>Corte fijo cada 3 min</small></div><div class="tr lane" id="laneHoy" data-lane="hoy"></div>
+            <div class="lab">Cambio de tema<small>Similitud entre segmentos</small></div><div class="tr sim" id="sim"></div>
+            <div class="lab">Con Ritmo<small>Solo en cortes naturales</small></div><div class="tr lane" id="laneRitmo" data-lane="ritmo"></div>
+            <div class="tl-over"><div class="playhead" id="playhead"></div></div>
+          </div>
+        </div>
+        <div class="legend">
+          <span><i class="sw sq" style="background:var(--cut)"></i>Hoy: corta la frase</span>
+          <span><i class="sw sq" style="background:var(--fixed)"></i>Hoy: antes del video</span>
+          <span><i class="sw" style="background:var(--show)"></i>Mostrar 15 s</span>
+          <span><i class="sw" style="background:var(--short)"></i>Acortar a 6 s</span>
+          <span><i class="sw" style="background:var(--defer)"></i>Diferir</span>
+          <span><i class="sw cap"></i>Tope alcanzado</span>
+        </div>
+      </section>
+
+      <section class="card" id="detail" aria-live="polite"></section>
+
+      <details class="card">
+        <summary>Cómo calcula el prototipo</summary>
+        <div class="assume">
+          <div>
+            <b>Cortes naturales (NLP)</b>
+            <ul>
+              <li>El video se transcribe en segmentos de 20 s y cada segmento se convierte en un vector (Sentence-BERT).</li>
+              <li>Si la similitud entre dos segmentos seguidos cae bajo <code>0,55</code>, hay un cambio de tema: ese es un corte candidato.</li>
+              <li>No se usan cortes en el último minuto y medio del video.</li>
+            </ul>
+          </div>
+          <div>
+            <b>Probabilidad de abandono</b>
+            <ul>
+              <li><code>p = 1 / (1 + e<sup>−z</sup>)</code>, donde <code>z</code> suma los factores del panel de detalle.</li>
+              <li>En producción, <code>z</code> lo calcula un modelo de gradient boosting entrenado con saltos y abandonos reales. Aquí los pesos son de demostración.</li>
+              <li>Decisión: si <code>p</code> está bajo el umbral se muestra; si no, se prueba el formato de 6 s; si sigue alto, se difiere.</li>
+            </ul>
+          </div>
+          <div>
+            <b>Ingreso esperado (índice, hoy = 100)</b>
+            <ul>
+              <li>Valor por anuncio = CPM relativo × (0,85 + 0,30 × afinidad). El formato de 6 s vale 0,55 de uno de 15 s.</li>
+              <li>En cada anuncio, el usuario abandona el video con probabilidad <code>0,18 × p</code>. Si se va, se pierden los anuncios siguientes.</li>
+              <li>Criterio de éxito de la sección 6.1: el ingreso por sesión cae menos de 12 %.</li>
+            </ul>
+          </div>
+        </div>
+      </details>
+    </main>
+
+    <!-- Celular -->
+    <section class="phone-col" aria-label="Vista de Lucía en el celular">
+      <div class="segmented" id="modeSeg">
+        <button data-v="hoy">Hoy</button>
+        <button data-v="ritmo">Con Ritmo</button>
+      </div>
+      <div class="phone">
+        <div class="screen" id="screen">
+          <div class="status"><span>9:41</span><span class="notch"></span><span>5G ▮▮▮</span></div>
+          <div class="video">
+            <div class="art">
+              <div class="wave" id="wave"></div>
+              <div class="show-tag">Bolsillo Claro · Ep. 42</div>
+            </div>
+            <div class="caption" id="caption"></div>
+            <div class="adlayer" id="adLayer" hidden></div>
+          </div>
+          <div class="progress"><div class="fill" id="pfill"></div><div id="pdots"></div></div>
+          <div class="meta">
+            <div class="vt">Cómo ahorrar tu primer sueldo (sin dejar de vivir)</div>
+            <div class="ch"><i></i>Bolsillo Claro · 184 mil vistas</div>
+          </div>
+          <div class="rpill" id="rpill"></div>
+          <div class="upnext" aria-hidden="true">
+            <div class="un"><i style="background:linear-gradient(140deg,#5a3b8c,#1f2a4a)"></i><div><s style="width:90%"></s><s style="width:55%"></s></div></div>
+            <div class="un"><i style="background:linear-gradient(140deg,#8c5a3b,#2a1f1a)"></i><div><s style="width:80%"></s><s style="width:40%"></s></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="player">
+        <button class="btn primary" id="play">Reproducir</button>
+        <button class="btn" id="restart">Desde el inicio</button>
+        <span class="clock" id="clock">0:00 / 18:00</span>
+      </div>
+      <p class="phone-note">Reproducción acelerada: 18 minutos en unos 40 segundos.</p>
+    </section>
+  </div>
+</div>
+
+<script>
+(function(){
+const DUR=1080, SEG=20, TH_CUT=0.55, LEAVE=0.18, SHORT_VALUE=0.55, SPEED=30;
+const $=s=>document.querySelector(s);
+const fmtT=s=>{s=Math.max(0,Math.round(s));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+const nf=(x,d=2)=>x.toLocaleString('es-ES',{minimumFractionDigits:d,maximumFractionDigits:d});
+const pc=(x,d=0)=>nf(x*100,d)+' %';
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const TOPICS=[
+ {t0:0,t1:100,name:'Presentación',lines:['Bienvenidos a Bolsillo Claro, episodio cuarenta y dos.','Hoy hablamos de tu primer sueldo y qué hacer con él.','Nos acompaña Carla, que asesora en finanzas personales hace diez años.']},
+ {t0:100,t1:300,name:'Por qué no ahorramos',lines:['La mayoría no ahorra porque espera que le sobre algo a fin de mes.','El problema es que nunca sobra: el gasto crece junto con el ingreso.','Por eso el ahorro tiene que salir primero, apenas cobras.','Y eso lo puedes automatizar desde tu propio banco.']},
+ {t0:300,t1:480,name:'La regla 50/30/20',lines:['La regla es simple: cincuenta por ciento para necesidades.','Treinta por ciento para gustos, como salidas, streaming o ropa.','Y veinte por ciento para ahorrar o para pagar deudas.','Si todavía vives con tus papás, sube el ahorro al treinta.']},
+ {t0:480,t1:700,name:'Apps y cuentas de ahorro',lines:['Casi todos los bancos tienen cuentas digitales sin mantenimiento.','Compara la tasa de interés y no te guíes solo por la publicidad.','Una app de gastos te muestra en qué se te va la plata cada semana.','Lo importante es revisarla una vez por semana, no una vez al año.']},
+ {t0:700,t1:880,name:'Preguntas de la audiencia',lines:['Nos escribe Diego: ¿conviene invertir o primero ahorrar?','Primero arma un fondo de emergencia de tres meses de gastos.','Recién después piensa en invertir a largo plazo.','Otra pregunta: ¿qué hago si trabajo por recibos por honorarios?']},
+ {t0:880,t1:1020,name:'Errores comunes',lines:['Error número uno: usar la tarjeta de crédito para pagar gustos.','Error número dos: no tener plata separada para imprevistos.','Error número tres: compararte con lo que ves en redes sociales.']},
+ {t0:1020,t1:1080,name:'Cierre',lines:['Eso fue todo por hoy, gracias por escucharnos.','Nos vemos el próximo jueves en Bolsillo Claro.']}
+];
+const ADS=[
+ {id:'sonora',name:'Sonora Plus',what:'Streaming de música',cat:'Música',afin:.88,hue:'#d14b8f',why:'Sueles ver videos con música de fondo.'},
+ {id:'nodo',name:'Nodo',what:'Audífonos inalámbricos',cat:'Tecnología',afin:.84,hue:'#3d6fe0',why:'Ves contenido largo desde el celular.'},
+ {id:'ahorra',name:'Ahorra+',what:'Cuenta de ahorro digital',cat:'Finanzas',afin:.79,hue:'#119b6f',why:'El video trata sobre ahorro y sigues canales de finanzas personales.'},
+ {id:'aula',name:'Aula Viva',what:'Cursos de inglés en línea',cat:'Educación',afin:.66,hue:'#d07b18',why:'Ves contenido educativo con frecuencia.'},
+ {id:'chaski',name:'Chaski',what:'Delivery de comida',cat:'Comida',afin:.61,hue:'#cf4433',why:'Coincide con tus horarios de uso.'},
+ {id:'rumbo',name:'Rumbo',what:'Pasajes de bus',cat:'Viajes',afin:.52,hue:'#2e8fa8',why:'Buscaste viajes en las últimas semanas.'},
+ {id:'trama',name:'Trama',what:'Moda urbana',cat:'Moda',afin:.44,hue:'#7a55c9',why:'Interés general de tu grupo de edad.'},
+ {id:'apuesta',name:'Apuesta Ya',what:'Casino en línea',cat:'Apuestas',afin:.21,hue:'#5b6170',why:'Campaña de alcance amplio, sin segmentación.'}
+];
+const AD=Object.fromEntries(ADS.map(a=>[a.id,a]));
+const CATS=['Música','Tecnología','Finanzas','Educación','Comida','Viajes','Moda','Apuestas'];
+const HOY_T=[0,180,360,540,720,900];
+const HOY_AD=['apuesta','chaski','apuesta','trama','rumbo','trama'];
+
+// Similitud entre segmentos consecutivos (demostración, semilla fija)
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rnd=mulberry(42);
+const BOUND=TOPICS.slice(1).map(x=>x.t0);
+const NEAR={200:.61,600:.58,800:.63};
+const SIMS=[];
+for(let k=1;k<DUR/SEG;k++){const tt=k*SEG;let v;
+  if(BOUND.includes(tt)) v=.30+rnd()*.12; else if(NEAR[tt]) v=NEAR[tt]; else v=.74+rnd()*.18;
+  SIMS.push({t:tt,v});}
+const simAt=tt=>{const s=SIMS.find(x=>x.t===tt);return s?s.v:null};
+const CANDS=[0,...SIMS.filter(s=>s.v<TH_CUT&&DUR-s.t>=90).map(s=>s.t)];
+const topicAt=tt=>TOPICS.find(x=>tt>=x.t0&&tt<x.t1)||TOPICS[TOPICS.length-1];
+
+// Estado
+const DEFAULTS={h:.78,prev:2,busy:false,cap:6,th:.60,hidden:[]};
+const PRESETS={base:DEFAULTS,busy:{h:.85,prev:1,busy:true,cap:6,th:.60,hidden:[]},tol:{h:.25,prev:0,busy:false,cap:8,th:.60,hidden:[]}};
+let S;function load(p){S={h:p.h,prev:p.prev,busy:p.busy,cap:p.cap,th:p.th,hidden:new Set(p.hidden)}}
+load(DEFAULTS);
+let RES=null, sel={lane:'ritmo',i:3}, mode='ritmo', t=0, playing=false, adLeft=0, adCut=null, nextIdx=0, lastTs=null;
+
+// Modelo
+const sig=z=>1/(1+Math.exp(-z));
+const cpm=a=>.85+.30*a;
+function parts(o){return [
+ {k:'Punto de partida',v:-2.0},
+ {k:'Historial de saltos',v:2.0*S.h},
+ {k:'Anuncios en la última hora',v:.12*o.n},
+ {k:'Corte a mitad de frase',v:o.mid?.9:0},
+ {k:'Relevancia del anuncio',v:1.2*(.55-o.afin)},
+ {k:'Manos ocupadas',v:S.busy?.8:0},
+ {k:'Antes de que empiece el video',v:o.pre?.4:0},
+ {k:'Formato corto de 6 s',v:o.short?-1.0:0}
+].filter(x=>x.v!==0||x.k==='Punto de partida')}
+const zsum=ps=>ps.reduce((a,b)=>a+b.v,0);
+
+function simulate(){
+ // Hoy
+ let n=S.prev,surv=1,rev=0,seen=new Set();const hoy=[];
+ HOY_T.forEach((tc,i)=>{const ad=AD[HOY_AD[i]];const ps=parts({n,mid:tc>0,afin:ad.afin,pre:tc===0});const z=zsum(ps),p=sig(z);
+  const v=surv*cpm(ad.afin);
+  hoy.push({lane:'hoy',i,t:tc,ad,p,z,parts:ps,fmt:15,mid:tc>0,pre:tc===0,shown:true,surv,rev:v,repeat:seen.has(ad.id),n});
+  seen.add(ad.id);rev+=v;surv*=1-LEAVE*p;n++;});
+ const hoyR={cuts:hoy,rev,surv,shown:hoy.length,mid:hoy.filter(c=>c.mid).length,secs:hoy.length*15,repeats:hoy.filter(c=>c.repeat).length};
+ // Ritmo
+ n=S.prev;surv=1;rev=0;const used=new Set();const rit=[];
+ CANDS.forEach((tc,i)=>{const c={lane:'ritmo',i,t:tc,pre:tc===0,sim:simAt(tc),n,surv,shown:false};
+  if(tc>0){c.from=topicAt(tc-1).name;c.to=topicAt(tc).name}
+  if(n>=S.cap){c.decision='tope';rit.push(c);return}
+  const pool=ADS.filter(a=>!used.has(a.id)).sort((a,b)=>b.afin-a.afin);
+  const ad=pool.find(a=>!S.hidden.has(a.cat));
+  if(!ad){c.decision='tope';c.noAd=true;rit.push(c);return}
+  c.ad=ad;c.replaced=pool.filter(a=>a.afin>ad.afin&&S.hidden.has(a.cat));
+  const p15p=parts({n,mid:false,afin:ad.afin,pre:c.pre}),p6p=parts({n,mid:false,afin:ad.afin,pre:c.pre,short:true});
+  c.p15=sig(zsum(p15p));c.p6=sig(zsum(p6p));
+  if(!S.busy&&c.p15<S.th){c.decision='mostrar';c.fmt=15;c.p=c.p15;c.parts=p15p}
+  else if(c.p6<S.th){c.decision='acortar';c.fmt=6;c.p=c.p6;c.parts=p6p}
+  else {c.decision='diferir';c.p=S.busy?c.p6:c.p15;c.parts=S.busy?p6p:p15p}
+  c.z=zsum(c.parts);
+  if(c.fmt){c.shown=true;c.rev=surv*cpm(ad.afin)*(c.fmt===6?SHORT_VALUE:1);rev+=c.rev;surv*=1-LEAVE*c.p;n++;used.add(ad.id)}
+  rit.push(c);});
+ const sh=rit.filter(c=>c.shown);
+ const ritR={cuts:rit,rev,surv,shown:sh.length,mid:0,secs:sh.reduce((a,c)=>a+c.fmt,0),repeats:0};
+ return {hoy:hoyR,ritmo:ritR};
+}
+
+// Indicadores
+function kpiTile(label,big,from,delta,cls,extra=''){return `<div class="kpi${extra?' money':''}"><div class="kpi-label">${label}</div><div class="kpi-row"><span class="kpi-big">${big}</span><span class="kpi-from">hoy ${from}</span></div><span class="delta ${cls}">${delta}</span>${extra}</div>`}
+const sgn=x=>(x>0?'+':x<0?'−':'±')+Math.abs(x);
+function renderKPIs(){const H=RES.hoy,R=RES.ritmo;
+ const d1=R.shown-H.shown,d2=R.mid-H.mid,d3=R.secs-H.secs,d5=R.repeats-H.repeats;
+ const fin=Math.round((R.surv-H.surv)*100);
+ const idx=R.rev/H.rev*100,chg=idx-100;
+ const ok=chg>-12, cls=chg>=0?'good':ok?'warn':'bad';
+ const crit=`<div class="crit">Criterio de éxito: caída menor a 12 % · <b>${ok?'Cumple':'No cumple'}</b></div>`;
+ $('#kpis').innerHTML=
+  kpiTile('Interrupciones',R.shown,H.shown,d1===0?'sin cambio':sgn(d1),d1<0?'good':d1>0?'bad':'flat')+
+  kpiTile('Cortes a mitad de frase',R.mid,H.mid,sgn(d2),d2<0?'good':'flat')+
+  kpiTile('Segundos de anuncio',R.secs+' s',H.secs+' s',sgn(d3)+' s',d3<0?'good':d3>0?'bad':'flat')+
+  kpiTile('Termina de ver el video',pc(R.surv),pc(H.surv),(fin>=0?'+':'−')+Math.abs(fin)+' pts',fin>0?'good':fin<0?'bad':'flat')+
+  kpiTile('Anuncios repetidos',R.repeats,H.repeats,sgn(d5),d5<0?'good':'flat')+
+  kpiTile('Ingreso esperado por sesión',nf(idx,0),'100',(chg>=0?'+':'−')+nf(Math.abs(chg),1)+' %',cls,crit);
+}
+
+// Línea de tiempo
+const L=tt=>(tt/DUR*100)+'%';
+function buildStatic(){
+ let ax='';for(let m=0;m<=18;m+=3){const tt=m*60;ax+=`<span class="tick${m===0?' first':m===18?' last':''}" style="left:${L(tt)}">${m}:00</span>`}
+ $('#axis').innerHTML=ax;
+ $('#topics').innerHTML=TOPICS.map(x=>`<div class="topic" style="left:${L(x.t0)};width:calc(${(x.t1-x.t0)/DUR*100}% - 2px)" title="${esc(x.name)}">${esc(x.name)}</div>`).join('');
+ const H=58,y=v=>(1-v)*H*0.92+H*0.04;
+ const pts=SIMS.map(s=>`${s.t},${y(s.v).toFixed(2)}`).join(' ');
+ const area=`M${SIMS[0].t},${H} L${pts.replace(/ /g,' L')} L${SIMS[SIMS.length-1].t},${H} Z`;
+ let dips='';SIMS.filter(s=>s.v<TH_CUT).forEach(s=>{dips+=`<span class="dip" style="left:${L(s.t)};top:${y(s.v)}px" title="${fmtT(s.t)} · similitud ${nf(s.v)}"></span>`});
+ $('#sim').innerHTML=`<svg viewBox="0 0 ${DUR} ${H}" preserveAspectRatio="none" aria-hidden="true"><path class="area" d="${area}"/><polyline class="line" points="${pts}"/><line class="thr" x1="0" x2="${DUR}" y1="${y(TH_CUT)}" y2="${y(TH_CUT)}"/></svg><span class="thr-lab" style="top:${y(TH_CUT)}px">umbral 0,55</span>${dips}`;
+ $('#wave').innerHTML=Array.from({length:22},(_,k)=>`<i style="height:${20+Math.round(Math.abs(Math.sin(k*1.7))*70)}%;animation-delay:${(k*73)%600}ms"></i>`).join('');
+ $('#cats').innerHTML=CATS.map(c=>`<button class="chip" data-cat="${c}" id="cat-${c.normalize('NFD').replace(/[^a-zA-Z]/g,'')}">${c}</button>`).join('');
+}
+const DEC={mostrar:['show','15','Mostrar 15 s'],acortar:['short','6','Acortar a 6 s'],diferir:['defer','→','Diferir'],tope:['cap','–','Tope alcanzado']};
+function renderLanes(){
+ $('#laneHoy').innerHTML=RES.hoy.cuts.map(c=>`<button class="mk fixed${c.mid?' mid':''}" style="left:${L(c.t)}" data-lane="hoy" data-i="${c.i}" aria-pressed="${sel.lane==='hoy'&&sel.i===c.i}" title="Hoy · ${fmtT(c.t)} · ${esc(c.ad.name)}${c.mid?' · corta la frase':''}">15</button>`).join('');
+ $('#laneRitmo').innerHTML=RES.ritmo.cuts.map(c=>{const d=DEC[c.decision];return `<button class="mk rit ${d[0]}" style="left:${L(c.t)}" data-lane="ritmo" data-i="${c.i}" aria-pressed="${sel.lane==='ritmo'&&sel.i===c.i}" title="Ritmo · ${fmtT(c.t)} · ${d[2]}">${d[1]}</button>`}).join('');
+}
+
+// Detalle
+function lineAt(tt){const tp=topicAt(tt);const k=Math.min(tp.lines.length-1,Math.floor((tt-tp.t0)/((tp.t1-tp.t0)/tp.lines.length)));return tp.lines[k]}
+function cutLine(s){const w=s.split(' ');const k=Math.max(3,Math.ceil(w.length*.55));return {said:w.slice(0,k).join(' '),rest:w.slice(k).join(' ')}}
+function adCard(ad){return `<div class="adcard"><div class="adlogo" style="background:${ad.hue}">${esc(ad.name[0])}</div><div><b>${esc(ad.name)}</b><span>${esc(ad.what)} · ${esc(ad.cat)}</span></div></div>
+ <div class="affin"><span>Afinidad con Lucía</span><span class="bar"><i style="width:${ad.afin*100}%"></i></span><b style="font-family:var(--f-mono);font-weight:500">${nf(ad.afin)}</b></div>`}
+function probBlock(c,title){const col=c.p<S.th?'var(--show)':'var(--cut)';
+ const rows=c.parts.map(x=>{const w=Math.min(50,Math.abs(x.v)/2.5*50);return `<span class="k">${x.k}</span><span class="cb">${x.v===0?'':`<i class="${x.v>0?'up':'down'}" style="width:${w}%"></i>`}</span><span class="v">${x.v>0?'+':x.v<0?'−':''}${nf(Math.abs(x.v))}</span>`}).join('');
+ return `<div class="block"><h3>${title}</h3>
+  <div class="pbig"><strong>${pc(c.p)}</strong><span>probabilidad de que lo salte o abandone</span></div>
+  <div class="gauge"><i style="width:${c.p*100}%;background:${col}"></i><span class="th" style="left:${S.th*100}%"><span>umbral ${nf(S.th)}</span></span></div>
+  <div class="contrib">${rows}</div>
+  <div class="formula">z = ${nf(c.z)} → p = 1 / (1 + e<sup>−z</sup>) = ${nf(c.p)}</div></div>`}
+function renderDetail(){
+ const c=RES[sel.lane].cuts[sel.i];if(!c){$('#detail').innerHTML='';return}
+ let top,left,right='',why='';
+ if(c.lane==='hoy'){
+  top=`<span class="pill lane">Hoy</span><span class="dtime">${fmtT(c.t)}</span><span class="pill fixed${c.pre?' pre':''}">${c.pre?'Antes del video':'Corta la frase'}</span>`;
+  let ctx;
+  if(c.pre) ctx=`<div class="quote">El anuncio aparece antes de que empiece el contenido.</div>`;
+  else{const q=cutLine(lineAt(c.t));ctx=`<div class="quote">«${esc(q.said)}<span class="cut">—</span>» <span style="color:var(--ink-3)">${esc(q.rest)}…</span></div>`}
+  why=c.pre?'El espacio está fijado antes del video, sin considerar a la usuaria ni el contenido.':'El espacio está fijado cada 3 minutos, sin mirar el contenido. Interrumpe a Carla a mitad de frase.';
+  left=`<div class="block"><h3>Qué estaba pasando</h3>${ctx}<p class="why">${why}</p></div>
+   <div class="block"><h3>Anuncio asignado</h3>${adCard(c.ad)}
+   <div class="note warn">${c.repeat?`Repetido: Lucía ya vio este anuncio en esta sesión. `:''}Asignado sin considerar sus intereses.</div>
+   <div class="money-line">Valor esperado del espacio: ${nf(c.rev)} · Probabilidad de que Lucía siga en el video al llegar aquí: ${pc(c.surv)}</div></div>`;
+  right=probBlock(c,'Riesgo de abandono');
+ } else {
+  const d=DEC[c.decision];
+  top=`<span class="pill lane">Con Ritmo</span><span class="dtime">${fmtT(c.t)}</span><span class="pill ${d[0]}">${d[2]}</span>`;
+  const ctx=c.pre?`<div class="quote">Inicio del video, antes del contenido.</div>`:
+   `<div class="quote">«${esc(lineAt(c.t-1))}»</div><p class="why" style="font-size:12.5px;color:var(--ink-2)">Cambio de tema detectado: <b>${esc(c.from)}</b> → <b>${esc(c.to)}</b>. Similitud entre segmentos ${nf(c.sim)}, bajo el umbral de corte de 0,55.</p>`;
+  if(c.decision==='tope'){
+   why=c.noAd?'No quedan anuncios en las categorías que Lucía deja ver. El corte queda libre.':`Lucía ya acumula ${c.n} anuncios en la última hora y fijó un tope de ${S.cap}. Este corte queda sin anuncio.`;
+  } else if(c.decision==='mostrar') why=`La probabilidad de abandono (${pc(c.p)}) está bajo el umbral de ${pc(S.th)}. Se muestra el anuncio de 15 s, saltable a los 5 s.`;
+  else if(c.decision==='acortar') why=S.busy?`Lucía tiene las manos ocupadas. Ritmo usa un anuncio de 6 s que termina solo y no exige tocar la pantalla.`:`Con 15 s la probabilidad de abandono sería ${pc(c.p15)}, sobre el umbral de ${pc(S.th)}. Con 6 s baja a ${pc(c.p6)}, así que se acorta.`;
+  else {const nx=RES.ritmo.cuts[c.i+1];why=`Incluso con 6 s la probabilidad (${pc(c.p6)}) supera el umbral de ${pc(S.th)}. El anuncio pasa al siguiente corte natural${nx?' ('+fmtT(nx.t)+')':', y en este video ya no queda ninguno'}.`}
+  let adPart='';
+  if(c.ad){const rep=c.replaced.length?`<div class="note">Lucía ocultó ${[...new Set(c.replaced.map(a=>a.cat))].join(', ')}: se reemplazó ${c.replaced.map(a=>esc(a.name)).join(', ')} por ${esc(c.ad.name)}.</div>`:'';
+   adPart=`<div class="block"><h3>${c.shown?'Anuncio elegido por afinidad':'Anuncio que tocaba'}</h3>${adCard(c.ad)}
+    <div class="note"><b>¿Por qué veo este anuncio?</b> ${esc(c.ad.why)}</div>${rep}
+    ${c.shown?`<div class="money-line">Valor esperado del espacio: ${nf(c.rev)} · Probabilidad de que Lucía siga en el video al llegar aquí: ${pc(c.surv)}</div>`:''}</div>`;}
+  left=`<div class="block"><h3>Qué estaba pasando</h3>${ctx}<p class="why">${why}</p></div>${adPart}`;
+  right=c.parts?probBlock(c,'Riesgo de abandono'):`<div class="block"><h3>Tope de Lucía</h3><div class="pbig"><strong>${c.n} de ${S.cap}</strong><span>anuncios en la última hora</span></div><p class="why" style="color:var(--ink-2)">El tope lo fija la usuaria. Ritmo no lo puede superar aunque el anuncio sea relevante.</p></div>`;
+ }
+ $('#detail').innerHTML=`<div class="detail-top">${top}</div><div class="detail-grid"><div class="block" style="gap:18px">${left}</div>${right}</div>`;
+}
+
+// Celular
+function adCutsFor(m){return RES[m].cuts.filter(c=>c.shown)}
+function renderPhoneStatic(){
+ $('#pdots').innerHTML=adCutsFor(mode).map(c=>`<span class="dot" style="left:${L(c.t)}"></span>`).join('');
+ document.querySelectorAll('#modeSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===mode));
+}
+function updatePlayer(){
+ $('#playhead').style.left=L(t);$('#pfill').style.width=L(t);
+ $('#clock').textContent=fmtT(t)+' / 18:00';
+ $('#play').textContent=playing?'Pausar':(t>=DUR?'Repetir':'Reproducir');
+ $('#screen').classList.toggle('playing',playing&&!adCut);
+ // subtítulo
+ let cap;
+ if(adCut){
+  if(adCut.t===0) cap='El video empieza después del anuncio';
+  else if(adCut.lane==='hoy'){const q=cutLine(lineAt(adCut.t));cap=`${esc(q.said)}<span class="cut">—</span>`}
+  else cap=esc(lineAt(adCut.t-1));
+ } else cap=t>=DUR?'Fin del episodio':esc(lineAt(Math.min(t,DUR-1)));
+ $('#caption').innerHTML=cap;
+ // contador de Ritmo
+ if(mode==='ritmo'){const seen=S.prev+RES.ritmo.cuts.filter(c=>c.shown&&(c.t<t||c===adCut)).length;
+  $('#rpill').innerHTML=`<b>Ritmo</b> · Anuncios en la última hora: <b>${Math.min(seen,S.cap)} de ${S.cap}</b> (tope que fijaste)<div class="meter">${Array.from({length:S.cap},(_,k)=>`<i class="${k<seen?'on':''}"></i>`).join('')}</div>`;}
+ else $('#rpill').innerHTML='Sin control sobre la cantidad de anuncios. La única salida es pagar Premium (S/ 26,90 al mes).';
+}
+let whyOpen=false;
+function showAd(c){adCut=c;whyOpen=false;drawAd()}
+function drawAd(){const c=adCut,el=$('#adLayer');if(!c){el.hidden=true;return}
+ const short=c.fmt===6,isR=c.lane==='ritmo';
+ el.innerHTML=`<div class="ad-top"><span class="adtag">${short?'Anuncio corto · 0:06':'Anuncio · 0:15'}</span>${isR?`<button class="whybtn" id="whyBtn">¿Por qué veo esto?</button>`:''}</div>
+ ${whyOpen?`<div class="whytext">${esc(c.ad.why)} Puedes ocultar la categoría ${esc(c.ad.cat)}.</div>`:`<div class="ad-mid"><div class="adlogo" style="background:${c.ad.hue}">${esc(c.ad.name[0])}</div><div><b>${esc(c.ad.name)}</b><span>${esc(c.ad.what)}</span></div></div>`}
+ <div class="ad-bot"><span class="ad-cta">Más información</span>${short?`<span class="auto">Termina solo. No necesitas tocar la pantalla.</span>`:`<span class="skip">Saltar en 5 ▸</span>`}</div>`;
+ el.hidden=false;
+ const wb=$('#whyBtn');if(wb)wb.onclick=e=>{e.stopPropagation();whyOpen=!whyOpen;drawAd()};
+}
+function hideAd(){adCut=null;$('#adLayer').hidden=true}
+function syncNext(){const cs=adCutsFor(mode);nextIdx=cs.findIndex(c=>c.t>=t);if(nextIdx<0)nextIdx=cs.length}
+function frame(ts){
+ if(!playing){lastTs=null;return}
+ if(lastTs==null)lastTs=ts;const dt=Math.min(100,ts-lastTs);lastTs=ts;
+ if(adCut){adLeft-=dt;if(adLeft<=0){hideAd();}}
+ else{const nt=t+dt/1000*SPEED;const cs=adCutsFor(mode);
+  if(nextIdx<cs.length&&cs[nextIdx].t<=nt){t=cs[nextIdx].t;const c=cs[nextIdx];nextIdx++;showAd(c);adLeft=c.fmt===6?1100:2300;}
+  else t=nt;
+  if(t>=DUR){t=DUR;playing=false}}
+ updatePlayer();requestAnimationFrame(frame);
+}
+function play(){if(t>=DUR){t=0;hideAd();syncNext()}
+ if(adCut&&adLeft<=0)adLeft=1200;
+ playing=true;lastTs=null;updatePlayer();requestAnimationFrame(frame)}
+function pause(){playing=false;updatePlayer()}
+
+// Controles
+function syncControls(){
+ $('#h').value=S.h;$('#hOut').textContent=pc(S.h);
+ $('#prev').value=S.prev;$('#prevOut').textContent=S.prev;
+ $('#cap').value=S.cap;$('#capOut').textContent=S.cap;
+ $('#th').value=S.th;$('#thOut').textContent=nf(S.th);
+ document.querySelectorAll('#ctxSeg button').forEach(b=>b.setAttribute('aria-pressed',(b.dataset.v==='1')===S.busy));
+ document.querySelectorAll('#cats .chip').forEach(b=>b.setAttribute('aria-pressed',S.hidden.has(b.dataset.cat)));
+}
+function recompute(){
+ RES=simulate();
+ if(!RES[sel.lane].cuts[sel.i])sel={lane:'ritmo',i:0};
+ // si se estaba mostrando un anuncio, refrescarlo con los nuevos datos
+ if(adCut){const nc=RES[adCut.lane].cuts[adCut.i];if(nc&&nc.shown&&adCut.lane===mode){adCut=nc;drawAd()}else hideAd()}
+ syncNext();syncControls();renderKPIs();renderLanes();renderDetail();renderPhoneStatic();updatePlayer();
+}
+['h','prev','cap','th'].forEach(id=>$('#'+id).addEventListener('input',e=>{S[id]=id==='prev'||id==='cap'?parseInt(e.target.value,10):parseFloat(e.target.value);recompute()}));
+$('#ctxSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.busy=b.dataset.v==='1';recompute()});
+$('#cats').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;const c=b.dataset.cat;S.hidden.has(c)?S.hidden.delete(c):S.hidden.add(c);recompute()});
+$('#presets').addEventListener('click',e=>{const b=e.target.closest('.preset');if(!b)return;load(PRESETS[b.dataset.p]);recompute()});
+$('#reset').addEventListener('click',()=>{load(DEFAULTS);recompute()});
+$('#modeSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;mode=b.dataset.v;hideAd();syncNext();renderPhoneStatic();updatePlayer()});
+$('#play').addEventListener('click',()=>playing?pause():play());
+$('#restart').addEventListener('click',()=>{t=0;hideAd();syncNext();play()});
+$('#tl').addEventListener('click',e=>{
+ const mk=e.target.closest('.mk');
+ if(mk){const lane=mk.dataset.lane,i=+mk.dataset.i;sel={lane,i};const c=RES[lane].cuts[i];
+  pause();mode=lane;t=c.t;
+  if(c.shown){showAd(c);adLeft=0;const cs=adCutsFor(mode);nextIdx=cs.indexOf(c)+1}else{hideAd();syncNext()}
+  renderLanes();renderDetail();renderPhoneStatic();updatePlayer();return}
+ const tr=e.target.closest('.tr');if(!tr||tr.id==='axis')return;
+ const r=tr.getBoundingClientRect();t=Math.max(0,Math.min(DUR,(e.clientX-r.left)/r.width*DUR));
+ hideAd();syncNext();updatePlayer();
+});
+
+buildStatic();recompute();
+// Abrir mostrando el corte seleccionado en el celular
+(function(){const c=RES[sel.lane].cuts[sel.i];mode=sel.lane;t=c.t;if(c.shown){showAd(c);adLeft=0;nextIdx=adCutsFor(mode).indexOf(c)+1}renderPhoneStatic();updatePlayer()})();
+window.__ritmo={simulate,get S(){return S},load};
+})();
+</script>
+
+</body>
+</html>
